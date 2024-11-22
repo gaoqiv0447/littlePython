@@ -5,6 +5,7 @@ from tkinter import filedialog, ttk, messagebox
 import os
 import subprocess
 import time
+import shutil
 
 class MergeMP4UI:
     def __init__(self):
@@ -61,28 +62,48 @@ class MergeMP4UI:
     def merge_videos(self):
         try:
             # 获取所有MP4文件
-            mp4_files = [f for f in os.listdir(self.folder_path) if f.endswith('.mp4')]
+            mp4_files = [f for f in os.listdir(self.folder_path) if f.lower().endswith('.mp4')]
             if not mp4_files:
                 messagebox.showinfo("提示", "所选文件夹中没有MP4文件")
                 return
 
             mp4_files.sort()  # 按文件名排序
 
+            # 创建临时工作目录
+            temp_dir = os.path.join(self.folder_path, 'temp_merge')
+            os.makedirs(temp_dir, exist_ok=True)
+
+            # 复制文件而不是创建符号链接
+            temp_files = []
+            for i, video in enumerate(mp4_files):
+                temp_name = f"{i:03d}.mp4"
+                temp_path = os.path.join(temp_dir, temp_name)
+                source_path = os.path.join(self.folder_path, video)
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                # 使用复制替代符号链接
+                shutil.copy2(source_path, temp_path)
+                temp_files.append(temp_name)
+
             # 创建文件列表
-            list_file = os.path.join(self.folder_path, 'file_list.txt')
+            list_file = os.path.join(temp_dir, 'file_list.txt')
             with open(list_file, 'w', encoding='utf-8') as f:
-                for video in mp4_files:
+                for video in temp_files:
                     f.write(f"file '{video}'\n")
 
             # 设置输出文件名
             output_file = os.path.join(self.folder_path, 'merged_output.mp4')
+
+            # 切换到临时目录
+            original_dir = os.getcwd()
+            os.chdir(temp_dir)
 
             # 合并命令
             merge_command = [
                 'ffmpeg',
                 '-f', 'concat',
                 '-safe', '0',
-                '-i', list_file,
+                '-i', 'file_list.txt',
                 '-c', 'copy',
                 output_file
             ]
@@ -109,14 +130,22 @@ class MergeMP4UI:
                     self.progress_label.config(text=f"合并进度: {current_file}/{total_files}")
                     self.window.update()
 
+            # 切换回原始目录
+            os.chdir(original_dir)
+
             if process.returncode == 0:
                 # 合并成功,进度条显示100%
                 self.progress_bar["value"] = 100
                 self.progress_label.config(text="合并进度: 100%")
                 self.window.update()
 
-                # 删除临时文件
+                # 清理临时文件和目录
+                for temp_file in temp_files:
+                    temp_path = os.path.join(temp_dir, temp_file)
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
                 os.remove(list_file)
+                os.rmdir(temp_dir)
 
                 messagebox.showinfo("完成", f"视频合并完成!\n输出文件: {output_file}")
             else:
@@ -124,6 +153,14 @@ class MergeMP4UI:
 
         except Exception as e:
             messagebox.showerror("错误", f"合并视频时出错: {str(e)}")
+            # 清理临时目录
+            if 'temp_dir' in locals() and os.path.exists(temp_dir):
+                try:
+                    for f in os.listdir(temp_dir):
+                        os.remove(os.path.join(temp_dir, f))
+                    os.rmdir(temp_dir)
+                except:
+                    pass
 
     def run(self):
         self.window.mainloop()
