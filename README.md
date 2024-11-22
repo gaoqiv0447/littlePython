@@ -6,3 +6,4 @@
 5. text2img.py 文字转图片
 6. transform2jpg.py 各种格式的图片转为jpg格式
 7. jpg2mp4.py jpg格式转mp4格式
+8. mergeMP4.py 把一个文件夹下的所有MP4文件拼接为一个MP4
