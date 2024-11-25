@@ -8,3 +8,4 @@
 7. jpg2mp4.py jpg格式转mp4格式
 8. mergeMP4.py 把一个文件夹下的所有MP4文件拼接为一个MP4
 9. xiaoyuzhouFMDownload.py小宇宙单集mp3下载
+10. audio2text.py 音频转文字
